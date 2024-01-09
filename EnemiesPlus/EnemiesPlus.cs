@@ -16,7 +16,7 @@ using EntityStates.Bell.BellWeapon;
 
 namespace EnemiesPlus
 {
-  [BepInPlugin("com.Nuxlar.EnemiesPlus", "EnemiesPlus", "0.8.1")]
+  [BepInPlugin("com.Nuxlar.EnemiesPlus", "EnemiesPlus", "0.8.2")]
 
   public class EnemiesPlus : BaseUnityPlugin
   {
@@ -25,10 +25,18 @@ namespace EnemiesPlus
     private GameObject bell = Addressables.LoadAssetAsync<GameObject>("RoR2/Base/Bell/BellBody.prefab").WaitForCompletion();
     private GameObject beetleGuard = Addressables.LoadAssetAsync<GameObject>("RoR2/Base/Beetle/BeetleGuardBody.prefab").WaitForCompletion();
     private GameObject beetleGuardMaster = Addressables.LoadAssetAsync<GameObject>("RoR2/Base/Beetle/BeetleGuardMaster.prefab").WaitForCompletion();
+    private BuffDef teamWarcryBuff = Addressables.LoadAssetAsync<BuffDef>("RoR2/Base/TeamWarCry/bdTeamWarCry.asset").WaitForCompletion();
+    private GameObject frenzyAura = PrefabAPI.InstantiateClone(Addressables.LoadAssetAsync<GameObject>("RoR2/Base/TeamWarCry/TeamWarCryAura.prefab").WaitForCompletion(), "BGFrenzyAura");
+    private static Material frenzyMat = Addressables.LoadAssetAsync<Material>("RoR2/Base/WardOnLevel/matWarbannerBuffBillboard.mat").WaitForCompletion();
+
+    public static BuffDef frenzyBuff;
 
     public void Awake()
     {
+      SetupBuff();
       BuffBeamSetup();
+      frenzyAura.GetComponent<DestroyOnTimer>().duration = 8f;
+      frenzyAura.transform.GetChild(0).GetComponent<ParticleSystemRenderer>().sharedMaterial = frenzyMat;
       ContentAddition.AddEntityState<RallyCry>(out _);
       AISkillDriver rallyCryDriver = beetleGuardMaster.AddComponent<AISkillDriver>();
       rallyCryDriver.customName = "RallyCry";
@@ -39,31 +47,79 @@ namespace EnemiesPlus
       beetleGuard.GetComponent<SkillLocator>().utility.skillFamily.variants[0].skillDef.activationState = new SerializableEntityStateType(typeof(RallyCry));
       IL.EntityStates.LemurianMonster.FireFireball.OnEnter += PredictiveFireball;
       IL.EntityStates.LemurianBruiserMonster.FireMegaFireball.FixedUpdate += PredictiveMegaFireball;
-      On.EntityStates.Bell.BellWeapon.BuffBeam.OnEnter += SwitchBuffBeamBuff;
-      On.EntityStates.Bell.BellWeapon.BuffBeam.OnExit += SwitchBuffBeamBuff2;
       On.RoR2.CharacterMaster.OnBodyStart += CharacterMaster_OnBodyStart;
+      On.EntityStates.Bell.BellWeapon.BuffBeam.OnEnter += PreventBellBellBuff;
       On.EntityStates.Bell.BellWeapon.BuffBeam.GetMinimumInterruptPriority += BellPriority;
       On.EntityStates.BeetleMonster.HeadbuttState.OnEnter += UncloakBeetle;
       On.RoR2.HealthComponent.TakeDamage += UncloakBeetle2;
+      On.RoR2.CharacterBody.UpdateAllTemporaryVisualEffects += AddFrenzyVFX;
+      RecalculateStatsAPI.GetStatCoefficients += AddFrenzyBehavior;
     }
-    private void SwitchBuffBeamBuff(On.EntityStates.Bell.BellWeapon.BuffBeam.orig_OnEnter orig, BuffBeam self)
+
+    private void AddFrenzyVFX(On.RoR2.CharacterBody.orig_UpdateAllTemporaryVisualEffects orig, CharacterBody self)
     {
       orig(self);
-      if ((bool)self.target)
+      self.UpdateSingleTemporaryVisualEffect(ref self.teamWarCryEffectInstance, frenzyAura, self.bestFitRadius, self.HasBuff(frenzyBuff), "HeadCenter");
+    }
+
+    private void AddFrenzyBehavior(CharacterBody sender, RecalculateStatsAPI.StatHookEventArgs args)
+    {
+      if (sender && sender.HasBuff(frenzyBuff))
+      {
+        args.attackSpeedMultAdd += 0.3f;
+        args.moveSpeedMultAdd += 0.3f;
+      }
+    }
+
+    private void PreventBellBellBuff(On.EntityStates.Bell.BellWeapon.BuffBeam.orig_OnEnter orig, BuffBeam self)
+    {
+      IntPtr ptr = typeof(BaseState).GetMethod(nameof(BaseState.OnEnter)).MethodHandle.GetFunctionPointer();
+      Action baseOnEnter = (Action)Activator.CreateInstance(typeof(Action), self, ptr);
+      baseOnEnter();
+
+      int num = (int)Util.PlaySound(BuffBeam.playBeamSoundString, self.gameObject);
+      Ray aimRay = self.GetAimRay();
+      BullseyeSearch bullseyeSearch = new BullseyeSearch();
+      bullseyeSearch.teamMaskFilter = TeamMask.none;
+      if ((bool)self.teamComponent)
+        bullseyeSearch.teamMaskFilter.AddTeam(self.teamComponent.teamIndex);
+      bullseyeSearch.filterByLoS = false;
+      bullseyeSearch.maxDistanceFilter = 50f;
+      bullseyeSearch.maxAngleFilter = 360f;
+      bullseyeSearch.searchOrigin = aimRay.origin;
+      bullseyeSearch.searchDirection = aimRay.direction;
+      bullseyeSearch.sortMode = BullseyeSearch.SortMode.Angle;
+      bullseyeSearch.RefreshCandidates();
+      bullseyeSearch.FilterOutGameObject(self.gameObject);
+      self.target = bullseyeSearch.GetResults().FirstOrDefault<HurtBox>();
+      Debug.LogFormat("Buffing target {0}", (object)self.target);
+      if ((bool)self.target && self.target.healthComponent.body.name != "BellBody(Clone)")
+      {
+        self.targetBody = self.target.healthComponent.body;
         self.targetBody.AddBuff(RoR2Content.Buffs.Immune.buffIndex);
+      }
+      string childName = "Muzzle";
+      Transform modelTransform = self.GetModelTransform();
+      if (!(bool)modelTransform)
+        return;
+      ChildLocator component1 = modelTransform.GetComponent<ChildLocator>();
+      if (!(bool)component1)
+        return;
+      self.muzzleTransform = component1.FindChild(childName);
+      self.buffBeamInstance = GameObject.Instantiate<GameObject>(BuffBeam.buffBeamPrefab);
+      ChildLocator component2 = self.buffBeamInstance.GetComponent<ChildLocator>();
+      if ((bool)component2)
+        self.beamTipTransform = component2.FindChild("BeamTip");
+      self.healBeamCurve = self.buffBeamInstance.GetComponentInChildren<BezierCurveLine>();
     }
-    private void SwitchBuffBeamBuff2(On.EntityStates.Bell.BellWeapon.BuffBeam.orig_OnExit orig, BuffBeam self)
-    {
-      if ((bool)self.targetBody)
-        self.targetBody.RemoveBuff(RoR2Content.Buffs.Immune.buffIndex);
-      orig(self);
-    }
+
     private void UncloakBeetle2(On.RoR2.HealthComponent.orig_TakeDamage orig, HealthComponent self, DamageInfo damageInfo)
     {
       if (self.body && self.body.name == "BeetleBody(Clone)")
       {
-        if (self.body.HasBuff(RoR2Content.Buffs.AffixHauntedRecipient))
+        if (self.body.HasBuff(RoR2Content.Buffs.AffixHauntedRecipient) && self.body.gameObject.GetComponent<ReflectiveShell>())
         {
+          GameObject.Destroy(self.body.gameObject.GetComponent<ReflectiveShell>());
           self.body.skinIndex = 1;
           self.body.modelLocator.modelTransform.gameObject.GetComponent<ModelSkinController>().ApplySkin(1);
           self.body.RemoveBuff(RoR2Content.Buffs.AffixHauntedRecipient);
@@ -73,8 +129,9 @@ namespace EnemiesPlus
     }
     private void UncloakBeetle(On.EntityStates.BeetleMonster.HeadbuttState.orig_OnEnter orig, HeadbuttState self)
     {
-      if (self.characterBody.HasBuff(RoR2Content.Buffs.AffixHauntedRecipient))
+      if (self.characterBody.HasBuff(RoR2Content.Buffs.AffixHauntedRecipient) && self.characterBody.gameObject.GetComponent<ReflectiveShell>())
       {
+        GameObject.Destroy(self.characterBody.gameObject.GetComponent<ReflectiveShell>());
         self.characterBody.skinIndex = 1;
         self.modelLocator.modelTransform.gameObject.GetComponent<ModelSkinController>().ApplySkin(1);
         self.characterBody.RemoveBuff(RoR2Content.Buffs.AffixHauntedRecipient);
@@ -89,8 +146,9 @@ namespace EnemiesPlus
     private void CharacterMaster_OnBodyStart(On.RoR2.CharacterMaster.orig_OnBodyStart orig, CharacterMaster self, CharacterBody body)
     {
       orig(self, body);
-      if (body.name == "BeetleBody(Clone)")
+      if (body.name == "BeetleBody(Clone)" && UnityEngine.Random.value < 0.5f)
       {
+        body.gameObject.AddComponent<ReflectiveShell>();
         body.AddBuff(RoR2Content.Buffs.AffixHauntedRecipient);
       }
       if (body.name == "BeetleGuardBody(Clone)")
@@ -172,7 +230,19 @@ namespace EnemiesPlus
       buffBeamDriver.requireEquipmentReady = false;
       buffBeamDriver.moveTargetType = AISkillDriver.TargetType.CurrentEnemy;
     }
+    private void SetupBuff()
+    {
+      frenzyBuff = ScriptableObject.CreateInstance<BuffDef>();
+      frenzyBuff.name = "BGFrenzy";
+      frenzyBuff.canStack = false;
+      frenzyBuff.isCooldown = false;
+      frenzyBuff.isDebuff = false;
+      frenzyBuff.buffColor = Color.yellow;
+      frenzyBuff.iconSprite = teamWarcryBuff.iconSprite;
+      (frenzyBuff as UnityEngine.Object).name = frenzyBuff.name;
 
+      ContentAddition.AddBuffDef(frenzyBuff);
+    }
     private void PredictiveMegaFireball(ILContext il)
     {
       ILCursor c = new ILCursor(il);
@@ -186,7 +256,7 @@ namespace EnemiesPlus
           if (self.characterBody && !self.characterBody.isPlayerControlled)
           {
             HurtBox targetHurtbox = GetMasterAITargetHurtbox(self.characterBody.master);
-            Ray newAimRay = PredictAimrayPS(aimRay, self.GetTeam(), 30f, EntityStates.LemurianBruiserMonster.FireMegaFireball.projectilePrefab, targetHurtbox);
+            Ray newAimRay = PredictAimrayPS(aimRay, self.GetTeam(), 15f, EntityStates.LemurianBruiserMonster.FireMegaFireball.projectilePrefab, targetHurtbox);
             return newAimRay;
           }
           return aimRay;
@@ -209,7 +279,7 @@ namespace EnemiesPlus
           if (self.characterBody && !self.characterBody.isPlayerControlled)
           {
             HurtBox targetHurtbox = GetMasterAITargetHurtbox(self.characterBody.master);
-            Ray newAimRay = PredictAimrayPS(aimRay, self.GetTeam(), 30f, EntityStates.LemurianMonster.FireFireball.projectilePrefab, targetHurtbox);
+            Ray newAimRay = PredictAimrayPS(aimRay, self.GetTeam(), 15f, EntityStates.LemurianMonster.FireFireball.projectilePrefab, targetHurtbox);
             return newAimRay;
           }
           return aimRay;

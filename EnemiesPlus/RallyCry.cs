@@ -21,6 +21,7 @@ namespace EnemiesPlus
         public override void OnEnter()
         {
             base.OnEnter();
+            Debug.LogWarning(DefenseUp.buffDuration);
             this.duration = DefenseUp.baseDuration / this.attackSpeedStat;
             Ray aimRay = this.GetAimRay();
             BullseyeSearch bullseyeSearch = new BullseyeSearch();
@@ -28,7 +29,7 @@ namespace EnemiesPlus
             if ((bool)(Object)this.teamComponent)
                 bullseyeSearch.teamMaskFilter.AddTeam(this.teamComponent.teamIndex);
             bullseyeSearch.filterByLoS = false;
-            bullseyeSearch.maxDistanceFilter = 20f;
+            bullseyeSearch.maxDistanceFilter = 13f;
             bullseyeSearch.maxAngleFilter = 360f;
             bullseyeSearch.searchOrigin = aimRay.origin;
             bullseyeSearch.searchDirection = aimRay.direction;
@@ -58,7 +59,7 @@ namespace EnemiesPlus
                     foreach (HurtBox nearbyAlly in this.nearbyAllies)
                     {
                         if (nearbyAlly.healthComponent.body)
-                            nearbyAlly.healthComponent.body.AddTimedBuff(RoR2Content.Buffs.Warbanner, DefenseUp.buffDuration);
+                            nearbyAlly.healthComponent.body.AddTimedBuff(EnemiesPlus.frenzyBuff, DefenseUp.buffDuration);
                     }
                 }
             }
