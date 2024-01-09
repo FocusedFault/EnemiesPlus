@@ -1,0 +1,9 @@
+﻿{
+	"name": "EnemiesPlus",
+	"version_number": "0.8.1",
+	"website_url": "",
+	"description": "Adds new abilities/attributes to enemies",
+	"dependencies": [
+		"RiskofThunder-R2API_ContentManagement-1.0.3"
+	]
+}
