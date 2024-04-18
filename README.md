@@ -1,45 +1,46 @@
 # Enemies Plus
 
-Planning on adding more attributes/abilities and editing lame ones (golem)
+## Enemy Changes
 
-### Beetles
+- Beetle Family - The debuff BeetleJuice is now stackable, lasting 5 seconds, and each stack applied resets the timer of previous stacks.
+- Beetle - now spit a small projectile at short range, similar to beetle queens, instead of headbutting. The projectile applies a stack of BeetleJuice.
+- Beetle Guard - has a new ability that increases own armor and increases nearby allies' attack/move speed. Does not apply if ally already has buff.
+- Beetle Queen - spit projectiles and acid pools apply BeetleJuice. BeetleWard now keep stacking BeetleJuice the longer you're inside of it.
 
-- Reflective Shell (Attribute): invisible until first attack or on taking damage (50% of beetles)
-  ![Uncloaking Beetle](https://cdn.discordapp.com/attachments/567832879879553037/1193095986923450408/clokbeble.gif)
+- Lemurian - Bite now has a slight lunge
 
-### Beetle Guards
+- Lesser Wisp - Fires more "bullets" (3 -> 6) but has the same damage
+- Greater Wisp - credit cost reduced by half (200 -> 120) (brass contraptions cost 60 as a reference)
 
-- Rally Cry (Ability): applies extra armor to self and applies a frenzy buff (+30% atk/move spd) to nearby enemies
-  ![Beetle Guard using Rally Cry](https://cdn.discordapp.com/attachments/567832879879553037/1194320598302736436/image.png)
+- Blind Pest - credit cost increased by 5 (15 -> 20) (wisps cost 10 as a reference)
 
-### Brass contraption
+- Imp - now throw 2 void spikes at a more distant range instead of slashing at close range
 
-- Resonance (Ability): tethers to an ally and makes them invincible for a short time
-  ![Bell using Resonance](https://cdn.discordapp.com/attachments/836312463981019193/1193106164012028004/image.png)
+- Brass Contraption - new ability BuffBeam, makes 1 nearby Golem/BeetleQueen class (size) enemy invincible for a short time (cannot target other brass contraptions)
 
-### Lemurians/Elder Lemurians
+- Lunar Family - new debuff Helfire, non-stackable, lasting 10 seconds, non-lethal, burns 10% of your full combined HP (+shield) while preventing healing and regen
+- Lunar Golem - new ability LunarShell, buffs self to have +100 armor and attacks inflict Helfire while buff is active
+- Lunar Wisp - increased acceleration (15 -> 30) and move speed (18 -> 20), miniguns spin up at closer range, orb applies Helfire
 
-- Super Intelligent (Attribute): predictive aiming
+## Enemies TODO (maybe)
 
-## Credits
+- Stone Titan
+- Wandering Vagrant
+- Magma/Overloading Worm
+- Grovetender
+- Imp Overlord
+- Xi Construct
+- Solus Control Unit
+- Grandparent
 
-- Moffein [AccurateEnemies](https://thunderstore.io/package/Moffein/AccurateEnemies/) (lemurian accuracy code)
+- Void Reaver
+- Void Jailer
+- Void Devastator
 
 ## Changelog
 
-**0.8.2**
+**1.0.0**
 
-- Reduced lemurian predictive angle 30 -> 15
-- Cloaked beetles are now a 50% chance
-- Prevents Bells from buffing each other
-- Reduces BGs' Rally Cry AoE 20 -> 13
-- Adds custom bg buff
-- Adds new effect for bg buff
-
-**0.8.1**
-
-- Reduced lemurian predictive angle 45 -> 30
-
-**0.8.0**
-
-- Release
+- Reworked and Improved
+- Adds changes to more enemies
+- Adds TweakAI as a dependency

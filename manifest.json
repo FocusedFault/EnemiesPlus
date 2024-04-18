@@ -1,11 +1,14 @@
 ﻿{
 	"name": "EnemiesPlus",
-	"version_number": "0.8.2",
-	"website_url": "",
-	"description": "Adds new abilities/attributes to enemies",
+	"version_number": "1.0.0",
+	"website_url": "https://github.com/FocusedFault/EnemiesPlus/issues",
+	"description": "Adds new abilities and AI behaviors to enemies",
 	"dependencies": [
-		"RiskofThunder-R2API_ContentManagement-1.0.3",
-		"RiskofThunder-R2API_RecalculateStats-1.3.0",
-		"RiskofThunder-R2API_Prefab-1.0.3"
+		"Nuxlar-TweakAI-1.2.0",
+		"RiskofThunder-R2API_ContentManagement-1.0.4",
+		"RiskofThunder-R2API_DamageType-1.0.4",
+		"RiskofThunder-R2API_Dot-1.0.1",
+		"RiskofThunder-R2API_Prefab-1.0.3",
+		"RiskofThunder-R2API_RecalculateStats-1.3.0"
 	]
 }
