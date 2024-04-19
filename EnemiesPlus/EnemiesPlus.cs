@@ -13,7 +13,7 @@ using RoR2.Skills;
 
 namespace EnemiesPlus
 {
-  [BepInPlugin("com.Nuxlar.EnemiesPlus", "EnemiesPlus", "1.0.0")]
+  [BepInPlugin("com.Nuxlar.EnemiesPlus", "EnemiesPlus", "1.0.1")]
 
   public class EnemiesPlus : BaseUnityPlugin
   {
@@ -31,8 +31,6 @@ namespace EnemiesPlus
     public static GameObject voidSpike = PrefabAPI.InstantiateClone(Addressables.LoadAssetAsync<GameObject>("RoR2/Base/ImpBoss/ImpVoidspikeProjectile.prefab").WaitForCompletion(), "VoidSpikeNux");
     private SpawnCard greaterWispCard = Addressables.LoadAssetAsync<SpawnCard>("RoR2/Base/GreaterWisp/cscGreaterWisp.asset").WaitForCompletion();
     private SpawnCard bellCard = Addressables.LoadAssetAsync<SpawnCard>("RoR2/Base/Bell/cscBell.asset").WaitForCompletion();
-    private SpawnCard pestCard = Addressables.LoadAssetAsync<SpawnCard>("RoR2/DLC1/FlyingVermin/cscFlyingVermin.asset").WaitForCompletion();
-    private SpawnCard pestSnowyCard = Addressables.LoadAssetAsync<SpawnCard>("RoR2/DLC1/FlyingVermin/cscFlyingVerminSnowy.asset").WaitForCompletion();
     private BuffDef beetleJuice = Addressables.LoadAssetAsync<BuffDef>("RoR2/Base/Beetle/bdBeetleJuice.asset").WaitForCompletion();
     private GameObject beetleGuard = Addressables.LoadAssetAsync<GameObject>("RoR2/Base/Beetle/BeetleGuardBody.prefab").WaitForCompletion();
     private GameObject beetleGuardMaster = Addressables.LoadAssetAsync<GameObject>("RoR2/Base/Beetle/BeetleGuardMaster.prefab").WaitForCompletion();
@@ -46,7 +44,7 @@ namespace EnemiesPlus
     private GameObject lunarGolem = Addressables.LoadAssetAsync<GameObject>("RoR2/Base/LunarGolem/LunarGolemBody.prefab").WaitForCompletion();
     private GameObject lunarWisp = Addressables.LoadAssetAsync<GameObject>("RoR2/Base/LunarWisp/LunarWispBody.prefab").WaitForCompletion();
     private GameObject lunarWispMaster = Addressables.LoadAssetAsync<GameObject>("RoR2/Base/LunarWisp/LunarWispMaster.prefab").WaitForCompletion();
-    private GameObject lunarWispTrackingBomb = Addressables.LoadAssetAsync<GameObject>("RoR2/Base/LunarWisp/LunarWispTrackingBomb.prefab").WaitForCompletion();
+    private GameObject lunarWispTrackingBomb = PrefabAPI.InstantiateClone(Addressables.LoadAssetAsync<GameObject>("RoR2/Base/LunarWisp/LunarWispTrackingBomb.prefab").WaitForCompletion(), "LunarWispOrbNux");
 
     public static GameObject helfireIgniteEffect = Addressables.LoadAssetAsync<GameObject>("RoR2/Base/BurnNearby/HelfireIgniteEffect.prefab").WaitForCompletion();
     public static BuffDef frenzyBuff;
@@ -72,8 +70,6 @@ namespace EnemiesPlus
       mdc4.Add(helfireDT);
 
       greaterWispCard.directorCreditCost = 120;
-      pestCard.directorCreditCost = 20;
-      pestSnowyCard.directorCreditCost = 20;
 
       ContentAddition.AddEntityState<BeetleSpit>(out _);
       ContentAddition.AddEntityState<SpikeSlash>(out _);
@@ -82,6 +78,7 @@ namespace EnemiesPlus
       beetleQueenSpit.GetComponent<ProjectileImpactExplosion>().destroyOnEnemy = true;
 
       beetleSpit.transform.localScale /= 2;
+      beetleSpit.GetComponent<Rigidbody>().useGravity = false;
       beetleSpit.GetComponent<ProjectileController>().ghostPrefab = beetleSpitGhost;
       ProjectileImpactExplosion pie = beetleSpit.GetComponent<ProjectileImpactExplosion>();
       pie.impactEffect = beetleSpitExplosion;
@@ -112,7 +109,7 @@ namespace EnemiesPlus
       rallyCryDriver.customName = "RallyCry";
       rallyCryDriver.skillSlot = SkillSlot.Utility;
       rallyCryDriver.requireSkillReady = true;
-      rallyCryDriver.maxUserHealthFraction = 0.8f;
+      // rallyCryDriver.maxUserHealthFraction = 0.8f;
       rallyCryDriver.movementType = AISkillDriver.MovementType.Stop;
       beetleGuard.GetComponent<SkillLocator>().utility.skillFamily.variants[0].skillDef.activationState = new SerializableEntityStateType(typeof(RallyCry));
 
@@ -140,7 +137,7 @@ namespace EnemiesPlus
         {
           case "HeadbuttOffNodegraph":
             driver.minDistance = 5f;
-            driver.maxDistance = 15f;
+            driver.maxDistance = 20f;
             break;
           case "ChaseOffNodegraph":
             driver.maxDistance = 5f;
@@ -170,7 +167,7 @@ namespace EnemiesPlus
             driver.minDistance = 15f;
             break;
           case "BlinkBecauseClose":
-            driver.minDistance = 15f;
+            driver.minDistance = 25f;
             driver.maxDistance = 45f;
             break;
           case "PathToTarget":
@@ -199,7 +196,7 @@ namespace EnemiesPlus
 
       CharacterBody lunarWispBody = lunarWisp.GetComponent<CharacterBody>();
       lunarWispBody.baseMoveSpeed = 20f;
-      lunarWispBody.baseAcceleration = 30f;
+      lunarWispBody.baseAcceleration = 20f;
 
       lunarGolem.GetComponent<SkillLocator>().secondary.skillFamily.variants[0].skillDef.interruptPriority = InterruptPriority.Death;
 
@@ -208,9 +205,9 @@ namespace EnemiesPlus
       lunarShellDriver.skillSlot = SkillSlot.Secondary;
       lunarShellDriver.requireSkillReady = true;
       lunarShellDriver.requireEquipmentReady = false;
-      lunarShellDriver.maxUserHealthFraction = 0.75f;
+      // lunarShellDriver.maxUserHealthFraction = 0.75f;
       lunarShellDriver.moveTargetType = AISkillDriver.TargetType.CurrentEnemy;
-      lunarShellDriver.movementType = AISkillDriver.MovementType.Stop;
+      lunarShellDriver.movementType = AISkillDriver.MovementType.ChaseMoveTarget;
 
       // On.EntityStates.AI.BaseAIState.AimAt += PredictiveAiming;
       On.RoR2.CharacterMaster.OnBodyStart += RearrangeSkillDrivers;
@@ -224,6 +221,7 @@ namespace EnemiesPlus
       On.EntityStates.Bell.BellWeapon.BuffBeam.OnExit += RemoveInvincibility;
       On.EntityStates.Bell.BellWeapon.BuffBeam.GetMinimumInterruptPriority += BellPriority;
       On.EntityStates.LunarGolem.Shell.OnEnter += RemoveShellAnim;
+      On.EntityStates.LunarWisp.SeekingBomb.OnEnter += ReplaceSeekingBombPrefab;
 
       On.RoR2.GlobalEventManager.OnHitEnemy += AddBeetleJuiceStack;
       On.RoR2.GlobalEventManager.OnHitEnemy += ApplyHelfire;
@@ -235,6 +233,12 @@ namespace EnemiesPlus
 
       RecalculateStatsAPI.GetStatCoefficients += AddFrenzyBehavior;
       RecalculateStatsAPI.GetStatCoefficients += AddLunarShellBehavior;
+    }
+
+    private void ReplaceSeekingBombPrefab(On.EntityStates.LunarWisp.SeekingBomb.orig_OnEnter orig, EntityStates.LunarWisp.SeekingBomb self)
+    {
+      EntityStates.LunarWisp.SeekingBomb.projectilePrefab = lunarWispTrackingBomb;
+      orig(self);
     }
 
     private void AddHelfireEffect(On.RoR2.CharacterBody.orig_OnBuffFirstStackGained orig, CharacterBody self, BuffDef buffDef)
@@ -271,7 +275,7 @@ namespace EnemiesPlus
         {
           self.victimBody.AddTimedBuff(helfireBuff, dotStack.timer);
           dotStack.damageType |= DamageType.NonLethal;
-          dotStack.damage = self.victimBody.healthComponent.fullCombinedHealth * 0.1f / 10 * 0.2f;
+          dotStack.damage = self.victimBody.healthComponent.fullCombinedHealth * 0.2f / 10 * 0.2f;
         }
       }
     }
@@ -280,7 +284,7 @@ namespace EnemiesPlus
     {
       if (sender && sender.HasBuff(RoR2Content.Buffs.LunarShell))
       {
-        args.armorAdd += 100f;
+        args.armorAdd += 200f;
       }
     }
 
@@ -400,16 +404,35 @@ namespace EnemiesPlus
       bullseyeSearch.maxAngleFilter = 360f;
       bullseyeSearch.searchOrigin = aimRay.origin;
       bullseyeSearch.searchDirection = aimRay.direction;
-      bullseyeSearch.sortMode = BullseyeSearch.SortMode.Angle;
+      bullseyeSearch.sortMode = BullseyeSearch.SortMode.Distance;
       bullseyeSearch.RefreshCandidates();
       bullseyeSearch.FilterOutGameObject(self.gameObject);
-      self.target = bullseyeSearch.GetResults().FirstOrDefault<HurtBox>();
-      if ((bool)self.target)
+      List<HurtBox> hurtBoxes = bullseyeSearch.GetResults().ToList();
+
+      if (hurtBoxes.Count > 0)
       {
-        self.targetBody = self.target.healthComponent.body;
-        if (self.targetBody && self.targetBody.name != "BellBody(Clone)" && (self.targetBody.hullClassification == HullClassification.Golem || self.targetBody.hullClassification == HullClassification.BeetleQueen))
-          self.targetBody.AddBuff(RoR2Content.Buffs.Immune.buffIndex);
+        foreach (HurtBox hurtBox in hurtBoxes)
+        {
+          if (hurtBox.healthComponent && hurtBox.healthComponent.body && hurtBox.healthComponent.alive)
+          {
+            CharacterBody targetBody = hurtBox.healthComponent.body;
+            if (targetBody && targetBody.name != "BellBody(Clone)" && (targetBody.hullClassification == HullClassification.Golem || targetBody.hullClassification == HullClassification.BeetleQueen))
+            {
+              self.target = hurtBox;
+              self.targetBody = targetBody;
+              targetBody.AddBuff(RoR2Content.Buffs.Immune.buffIndex);
+              break;
+            }
+          }
+        }
       }
+
+      if (!self.target && !self.targetBody)
+      {
+        self.outer.SetNextStateToMain();
+        return;
+      }
+
       string childName = "Muzzle";
       Transform modelTransform = self.GetModelTransform();
       if (!(bool)modelTransform)
@@ -455,7 +478,7 @@ namespace EnemiesPlus
     {
       helfireBuff = ScriptableObject.CreateInstance<BuffDef>();
       helfireBuff.name = "Helfire";
-      helfireBuff.canStack = false;
+      helfireBuff.canStack = true;
       helfireBuff.isCooldown = false;
       helfireBuff.isDebuff = true;
       helfireBuff.buffColor = Color.cyan;

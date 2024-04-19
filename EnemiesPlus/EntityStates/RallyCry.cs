@@ -27,7 +27,7 @@ namespace EnemiesPlus
             if ((bool)this.teamComponent)
                 bullseyeSearch.teamMaskFilter.AddTeam(this.teamComponent.teamIndex);
             bullseyeSearch.filterByLoS = false;
-            bullseyeSearch.maxDistanceFilter = 13f;
+            bullseyeSearch.maxDistanceFilter = 16f;
             bullseyeSearch.maxAngleFilter = 360f;
             bullseyeSearch.searchOrigin = aimRay.origin;
             bullseyeSearch.searchDirection = aimRay.direction;
@@ -53,7 +53,7 @@ namespace EnemiesPlus
                 this.hasCastBuff = true;
                 if (NetworkServer.active)
                 {
-                    this.characterBody.AddTimedBuff(RoR2Content.Buffs.ArmorBoost, DefenseUp.buffDuration);
+                    this.characterBody.AddTimedBuff(RoR2Content.Buffs.SmallArmorBoost, DefenseUp.buffDuration);
                     foreach (HurtBox nearbyAlly in this.nearbyAllies)
                     {
                         if (nearbyAlly.healthComponent.body && !nearbyAlly.healthComponent.body.HasBuff(EnemiesPlus.frenzyBuff))
