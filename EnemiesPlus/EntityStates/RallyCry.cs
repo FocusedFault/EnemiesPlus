@@ -38,7 +38,7 @@ namespace EnemiesPlus
             this.modelAnimator = this.GetModelAnimator();
             if (!(bool)this.modelAnimator)
                 return;
-            Util.PlayAttackSpeedSound("Play_beetle_queen_attack1", this.gameObject, 5);
+            Util.PlayAttackSpeedSound("Play_beetle_queen_attack1", this.gameObject, 6);
             this.PlayCrossfade("Body", nameof(DefenseUp), "DefenseUp.playbackRate", this.duration, 0.2f);
         }
 
@@ -49,11 +49,11 @@ namespace EnemiesPlus
             {
                 ScaleParticleSystemDuration component = Object.Instantiate<GameObject>(DefenseUp.defenseUpPrefab, this.transform.position, Quaternion.identity, this.transform).GetComponent<ScaleParticleSystemDuration>();
                 if ((bool)component)
-                    component.newDuration = DefenseUp.buffDuration;
+                    component.newDuration = this.buffDuration;
                 this.hasCastBuff = true;
                 if (NetworkServer.active)
                 {
-                    this.characterBody.AddTimedBuff(RoR2Content.Buffs.SmallArmorBoost, DefenseUp.buffDuration);
+                    this.characterBody.AddTimedBuff(RoR2Content.Buffs.SmallArmorBoost, this.buffDuration);
                     foreach (HurtBox nearbyAlly in this.nearbyAllies)
                     {
                         if (nearbyAlly.healthComponent.body && !nearbyAlly.healthComponent.body.HasBuff(EnemiesPlus.frenzyBuff))

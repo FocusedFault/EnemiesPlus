@@ -7,7 +7,7 @@ namespace EnemiesPlus
 {
     public class BeetleSpit : BaseState
     {
-        public static float baseDuration = 1.25f;
+        public static float baseDuration = 1f;
         public static float damageCoefficient;
         public static string attackSoundString = "Play_beetle_worker_attack";
         private GameObject projectilePrefab = EnemiesPlus.beetleSpit;
@@ -21,7 +21,7 @@ namespace EnemiesPlus
             this.stopwatch = 0.0f;
             this.duration = baseDuration / this.attackSpeedStat;
             this.GetModelTransform();
-            Util.PlayAttackSpeedSound(attackSoundString, this.gameObject, 1.5f);
+            Util.PlayAttackSpeedSound(attackSoundString, this.gameObject, 2f);
             this.PlayCrossfade("Body", "EmoteSurprise", "Headbutt.playbackRate", this.duration, 0.1f);
         }
 
@@ -29,7 +29,7 @@ namespace EnemiesPlus
         {
             base.FixedUpdate();
             this.stopwatch += Time.deltaTime;
-            if (!this.hasFired && (double)this.stopwatch >= 1)
+            if (!this.hasFired && (double)this.stopwatch >= this.duration)
             {
                 this.hasFired = true;
                 Ray aimRay = this.GetAimRay();

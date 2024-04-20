@@ -17,7 +17,7 @@
 - Brass Contraption - new ability BuffBeam, makes 1 nearby Golem/BeetleQueen class (size) enemy invincible for a short time (cannot target other brass contraptions)
 
 - Lunar Family - new debuff Helfire, stackable, lasting 10 seconds, non-lethal, burns 10% of your full combined HP (+shield) while preventing healing and regen
-- Lunar Golem - new ability LunarShell, buffs self to have +200 armor and attacks inflict Helfire while buff is active
+- Lunar Golem - new ability LunarShell, buffs self to have +200 armor and attacks inflict Helfire while buff is active, can no longer be hitstunned (still be stunned/frozen, just not stunned from high powered damage)
 - Lunar Wisp - increased acceleration (15 -> 20) and move speed (18 -> 20), miniguns spin up at closer range, orb applies Helfire
 
 ## Enemies TODO (maybe)
@@ -36,6 +36,14 @@
 - Void Devastator
 
 ## Changelog
+
+**1.0.2**
+
+- Lunar Golems can no longer be hit-stunned
+- Fixes LunarShell not applying consistently
+- Fixes BeetleSpit not working with higher attack speed
+- Fixes Helfire only being applied twice
+- Fixes Helfire not burning the proper HP value
 
 **1.0.1**
 

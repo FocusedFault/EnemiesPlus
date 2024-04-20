@@ -13,7 +13,7 @@ using RoR2.Skills;
 
 namespace EnemiesPlus
 {
-  [BepInPlugin("com.Nuxlar.EnemiesPlus", "EnemiesPlus", "1.0.1")]
+  [BepInPlugin("com.Nuxlar.EnemiesPlus", "EnemiesPlus", "1.0.2")]
 
   public class EnemiesPlus : BaseUnityPlugin
   {
@@ -198,13 +198,17 @@ namespace EnemiesPlus
       lunarWispBody.baseMoveSpeed = 20f;
       lunarWispBody.baseAcceleration = 20f;
 
+      lunarGolem.GetComponent<SetStateOnHurt>().canBeHitStunned = false;
+
       lunarGolem.GetComponent<SkillLocator>().secondary.skillFamily.variants[0].skillDef.interruptPriority = InterruptPriority.Death;
+      lunarGolemMaster.GetComponents<AISkillDriver>().Where(driver => driver.customName == "StrafeAndShoot").First().requireSkillReady = true;
 
       AISkillDriver lunarShellDriver = lunarGolemMaster.AddComponent<AISkillDriver>();
       lunarShellDriver.customName = "LunarShell";
       lunarShellDriver.skillSlot = SkillSlot.Secondary;
       lunarShellDriver.requireSkillReady = true;
       lunarShellDriver.requireEquipmentReady = false;
+      lunarShellDriver.driverUpdateTimerOverride = 3f;
       // lunarShellDriver.maxUserHealthFraction = 0.75f;
       lunarShellDriver.moveTargetType = AISkillDriver.TargetType.CurrentEnemy;
       lunarShellDriver.movementType = AISkillDriver.MovementType.ChaseMoveTarget;
@@ -220,7 +224,6 @@ namespace EnemiesPlus
       On.EntityStates.Bell.BellWeapon.BuffBeam.OnEnter += PreventBellBellBuff;
       On.EntityStates.Bell.BellWeapon.BuffBeam.OnExit += RemoveInvincibility;
       On.EntityStates.Bell.BellWeapon.BuffBeam.GetMinimumInterruptPriority += BellPriority;
-      On.EntityStates.LunarGolem.Shell.OnEnter += RemoveShellAnim;
       On.EntityStates.LunarWisp.SeekingBomb.OnEnter += ReplaceSeekingBombPrefab;
 
       On.RoR2.GlobalEventManager.OnHitEnemy += AddBeetleJuiceStack;
@@ -229,7 +232,7 @@ namespace EnemiesPlus
       On.RoR2.CharacterBody.UpdateAllTemporaryVisualEffects += AddFrenzyVFX;
 
       DotAPI.CustomDotBehaviour customHelfireDotBehavior = AddPercentHelfireDamage;
-      helfireDotIdx = DotAPI.RegisterDotDef(0.2f, 0.2f, DamageColorIndex.DeathMark, helfireBuff, customHelfireDotBehavior);
+      helfireDotIdx = DotAPI.RegisterDotDef(0.2f, 0f, DamageColorIndex.DeathMark, helfireBuff, customHelfireDotBehavior);
 
       RecalculateStatsAPI.GetStatCoefficients += AddFrenzyBehavior;
       RecalculateStatsAPI.GetStatCoefficients += AddLunarShellBehavior;
@@ -255,27 +258,14 @@ namespace EnemiesPlus
         GameObject.Destroy(self.gameObject.GetComponent<NuxHelfireEffectController>());
     }
 
-    private void RemoveShellAnim(On.EntityStates.LunarGolem.Shell.orig_OnEnter orig, EntityStates.LunarGolem.Shell self)
-    {
-      IntPtr ptr = typeof(BaseState).GetMethod(nameof(BaseState.OnEnter)).MethodHandle.GetFunctionPointer();
-      Action baseOnEnter = (Action)Activator.CreateInstance(typeof(Action), self, ptr);
-      baseOnEnter();
-
-      self.duration = EntityStates.LunarGolem.Shell.baseDuration / self.attackSpeedStat;
-      Util.PlaySound(EntityStates.LunarGolem.Shell.preShieldSoundString, self.gameObject);
-      // this.PlayCrossfade("Gesture, Additive", "PreShield", 0.2f);
-      EffectManager.SimpleMuzzleFlash(EntityStates.LunarGolem.Shell.preShieldEffect, self.gameObject, "Center", false);
-    }
-
     private void AddPercentHelfireDamage(DotController self, DotController.DotStack dotStack)
     {
       if (dotStack.dotIndex == helfireDotIdx)
       {
         if (self.victimBody && self.victimBody.healthComponent)
         {
-          self.victimBody.AddTimedBuff(helfireBuff, dotStack.timer);
           dotStack.damageType |= DamageType.NonLethal;
-          dotStack.damage = self.victimBody.healthComponent.fullCombinedHealth * 0.2f / 10 * 0.2f;
+          dotStack.damage = self.victimBody.healthComponent.fullHealth * 0.1f / 10f * 0.2f; ;
         }
       }
     }
@@ -568,10 +558,10 @@ namespace EnemiesPlus
       {
         CharacterBody attackerBody = damageInfo.attacker.GetComponent<CharacterBody>();
         CharacterBody victimBody = victim.GetComponent<CharacterBody>();
-        if (attackerBody && victimBody && !victimBody.HasBuff(helfireBuff))
+        if (attackerBody && victimBody)
         {
           if (attackerBody.HasBuff(RoR2Content.Buffs.LunarShell) || DamageAPI.HasModdedDamageType(damageInfo, helfireDT))
-            DotController.InflictDot(victim, damageInfo.attacker, helfireDotIdx, 10f);
+            DotController.InflictDot(victim, damageInfo.attacker, helfireDotIdx, 10f, 1f);
         }
       }
     }
