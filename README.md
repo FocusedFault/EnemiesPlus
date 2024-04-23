@@ -7,6 +7,10 @@
 - Beetle Guard - has a new ability that increases own armor (+100) and increases nearby allies' attack/move speed (+25%). Does not apply if ally already has buff.
 - Beetle Queen - spit projectiles and acid pools apply BeetleJuice. BeetleWard now keep stacking BeetleJuice the longer you're inside of it.
 
+- Lunar Family - new debuff Helfire, stackable, lasting 10 seconds, non-lethal, burns 10% of your full combined HP (+shield) while preventing healing and regen
+- Lunar Golem - new ability LunarShell, buffs self to have +200 armor and attacks inflict Helfire while buff is active, can no longer be hitstunned (still be stunned/frozen, just not stunned from high powered damage)
+- Lunar Wisp - increased acceleration (15 -> 20) and move speed (18 -> 20), miniguns spin up at closer range, orb applies Helfire
+
 - Lemurian - Bite now has a slight lunge
 
 - Lesser Wisp - Fires more "bullets" (3 -> 6) but has the same damage
@@ -16,15 +20,12 @@
 
 - Brass Contraption - new ability BuffBeam, makes 1 nearby Golem/BeetleQueen class (size) enemy invincible for a short time (cannot target other brass contraptions)
 
-- Lunar Family - new debuff Helfire, stackable, lasting 10 seconds, non-lethal, burns 10% of your full combined HP (+shield) while preventing healing and regen
-- Lunar Golem - new ability LunarShell, buffs self to have +200 armor and attacks inflict Helfire while buff is active, can no longer be hitstunned (still be stunned/frozen, just not stunned from high powered damage)
-- Lunar Wisp - increased acceleration (15 -> 20) and move speed (18 -> 20), miniguns spin up at closer range, orb applies Helfire
+- Magma/Overloading Worm - new ability Leap, worm launches into the air like RoR1/RoRR and improves turning
 
 ## Enemies TODO (maybe)
 
 - Stone Titan
 - Wandering Vagrant
-- Magma/Overloading Worm
 - Grovetender
 - Imp Overlord
 - Xi Construct
@@ -36,6 +37,13 @@
 - Void Devastator
 
 ## Changelog
+
+**1.0.3**
+
+- Changes beetle guard RallyCry sound
+- Adds Leap to Magma/Overloading Worms
+- Enhances Magma/Overloading Worm targeting/turning
+- Increases Magma/Overloading Worm trail particle size (visual change)
 
 **1.0.2**
 

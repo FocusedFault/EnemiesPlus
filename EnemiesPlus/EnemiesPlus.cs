@@ -10,10 +10,11 @@ using System.Collections.Generic;
 using System.Linq;
 using RoR2.Projectile;
 using RoR2.Skills;
+using HG;
 
 namespace EnemiesPlus
 {
-  [BepInPlugin("com.Nuxlar.EnemiesPlus", "EnemiesPlus", "1.0.2")]
+  [BepInPlugin("com.Nuxlar.EnemiesPlus", "EnemiesPlus", "1.0.3")]
 
   public class EnemiesPlus : BaseUnityPlugin
   {
@@ -45,6 +46,10 @@ namespace EnemiesPlus
     private GameObject lunarWisp = Addressables.LoadAssetAsync<GameObject>("RoR2/Base/LunarWisp/LunarWispBody.prefab").WaitForCompletion();
     private GameObject lunarWispMaster = Addressables.LoadAssetAsync<GameObject>("RoR2/Base/LunarWisp/LunarWispMaster.prefab").WaitForCompletion();
     private GameObject lunarWispTrackingBomb = PrefabAPI.InstantiateClone(Addressables.LoadAssetAsync<GameObject>("RoR2/Base/LunarWisp/LunarWispTrackingBomb.prefab").WaitForCompletion(), "LunarWispOrbNux");
+    private GameObject magmaWorm = Addressables.LoadAssetAsync<GameObject>("RoR2/Base/MagmaWorm/MagmaWormBody.prefab").WaitForCompletion();
+    private GameObject electricWorm = Addressables.LoadAssetAsync<GameObject>("RoR2/Base/ElectricWorm/ElectricWormBody.prefab").WaitForCompletion();
+    private GameObject magmaWormMaster = Addressables.LoadAssetAsync<GameObject>("RoR2/Base/MagmaWorm/MagmaWormMaster.prefab").WaitForCompletion();
+    private GameObject electricWormMaster = Addressables.LoadAssetAsync<GameObject>("RoR2/Base/ElectricWorm/ElectricWormMaster.prefab").WaitForCompletion();
 
     public static GameObject helfireIgniteEffect = Addressables.LoadAssetAsync<GameObject>("RoR2/Base/BurnNearby/HelfireIgniteEffect.prefab").WaitForCompletion();
     public static BuffDef frenzyBuff;
@@ -130,6 +135,54 @@ namespace EnemiesPlus
       skillLocator.primary.skillFamily.variants[0].skillDef.activationState = new SerializableEntityStateType(typeof(BeetleSpit));
       skillLocator.primary.skillFamily.variants[0].skillDef.baseRechargeInterval = 3f;
       skillLocator.secondary.skillFamily.variants[0].skillDef.baseMaxStock = 0;
+
+      ParticleSystem[] magmaWormPS = magmaWorm.GetComponent<ModelLocator>().modelTransform.gameObject.GetComponentsInChildren<ParticleSystem>();
+      foreach (ParticleSystem ps in magmaWormPS)
+        ps.startSize *= 2;
+
+      SkillDef magmaWormUtilityDef = magmaWorm.GetComponent<SkillLocator>().utility.skillFamily.variants[0].skillDef;
+      magmaWormUtilityDef.activationState = new SerializableEntityStateType(typeof(EntityStates.MagmaWorm.Leap));
+      magmaWormUtilityDef.baseRechargeInterval = 60f;
+      magmaWormUtilityDef.activationStateMachineName = "Weapon";
+
+      foreach (AISkillDriver driver in magmaWormMaster.GetComponents<AISkillDriver>())
+      {
+        switch (driver.customName)
+        {
+          case "Blink":
+            driver.shouldSprint = true;
+            driver.minDistance = 0f;
+            driver.aimType = AISkillDriver.AimType.AtMoveTarget;
+            break;
+          default:
+            driver.skillSlot = SkillSlot.None;
+            break;
+        }
+      }
+
+      ParticleSystem[] electricWormPS = electricWorm.GetComponent<ModelLocator>().modelTransform.gameObject.GetComponentsInChildren<ParticleSystem>();
+      foreach (ParticleSystem ps in electricWormPS)
+        ps.startSize *= 2;
+
+      SkillDef electicWormUtilityDef = electricWorm.GetComponent<SkillLocator>().utility.skillFamily.variants[0].skillDef;
+      electicWormUtilityDef.activationState = new SerializableEntityStateType(typeof(EntityStates.MagmaWorm.Leap));
+      electicWormUtilityDef.baseRechargeInterval = 60f;
+      electicWormUtilityDef.activationStateMachineName = "Weapon";
+
+      foreach (AISkillDriver driver in electricWormMaster.GetComponents<AISkillDriver>())
+      {
+        switch (driver.customName)
+        {
+          case "Blink":
+            driver.shouldSprint = true;
+            driver.minDistance = 0f;
+            driver.aimType = AISkillDriver.AimType.AtMoveTarget;
+            break;
+          default:
+            driver.skillSlot = SkillSlot.None;
+            break;
+        }
+      }
 
       foreach (AISkillDriver driver in beetleMaster.GetComponents<AISkillDriver>())
       {
@@ -225,6 +278,7 @@ namespace EnemiesPlus
       On.EntityStates.Bell.BellWeapon.BuffBeam.OnExit += RemoveInvincibility;
       On.EntityStates.Bell.BellWeapon.BuffBeam.GetMinimumInterruptPriority += BellPriority;
       On.EntityStates.LunarWisp.SeekingBomb.OnEnter += ReplaceSeekingBombPrefab;
+      On.RoR2.WormBodyPositionsDriver.FixedUpdateServer += RemoveRandomTurns;
 
       On.RoR2.GlobalEventManager.OnHitEnemy += AddBeetleJuiceStack;
       On.RoR2.GlobalEventManager.OnHitEnemy += ApplyHelfire;
@@ -236,6 +290,49 @@ namespace EnemiesPlus
 
       RecalculateStatsAPI.GetStatCoefficients += AddFrenzyBehavior;
       RecalculateStatsAPI.GetStatCoefficients += AddLunarShellBehavior;
+    }
+
+    private void RemoveRandomTurns(On.RoR2.WormBodyPositionsDriver.orig_FixedUpdateServer orig, RoR2.WormBodyPositionsDriver self)
+    {
+      CharacterBody body = self.gameObject.GetComponent<CharacterBody>();
+      Vector3 targetPosition = self.referenceTransform.position;
+
+      if (body && body.master)
+      {
+        if (self.gameObject.GetComponents<EntityStateMachine>().Where(machine => machine.customName == "Weapon").First().state.GetType() != typeof(EntityStates.MagmaWorm.Leap))
+        {
+          BaseAI baseAI = body.masterObject.GetComponent<BaseAI>();
+          if (baseAI && baseAI.currentEnemy != null && baseAI.currentEnemy.characterBody != null)
+            targetPosition = baseAI.currentEnemy.characterBody.corePosition;
+        }
+      }
+
+      float speedMultiplier = self.wormBodyPositions.speedMultiplier;
+      Vector3 normalized = (targetPosition - self.chaserPosition).normalized;
+      float num1 = (float)((self.chaserIsUnderground ? (double)self.maxTurnSpeed : (double)self.maxTurnSpeed * (double)self.turnRateCoefficientAboveGround) * (Math.PI / 180.0));
+      Vector3 vector3 = Vector3.RotateTowards(new Vector3(self.chaserVelocity.x, 0.0f, self.chaserVelocity.z), new Vector3(normalized.x, 0.0f, normalized.z) * speedMultiplier, num1 * Time.fixedDeltaTime, float.PositiveInfinity);
+      vector3 = vector3.normalized * speedMultiplier;
+      float num2 = targetPosition.y - self.chaserPosition.y;
+      float num3 = -self.chaserVelocity.y * self.yDamperConstant;
+      float num4 = num2 * self.ySpringConstant;
+      if (self.allowShoving && (double)Mathf.Abs(self.chaserVelocity.y) < (double)self.yShoveVelocityThreshold && (double)num2 > (double)self.yShovePositionThreshold)
+        self.chaserVelocity = self.chaserVelocity.XAZ(self.chaserVelocity.y + self.yShoveForce * Time.fixedDeltaTime);
+      if (!self.chaserIsUnderground)
+      {
+        num4 *= self.wormForceCoefficientAboveGround;
+        num3 *= self.wormForceCoefficientAboveGround;
+      }
+      self.chaserVelocity = self.chaserVelocity.XAZ(self.chaserVelocity.y + (num4 + num3) * Time.fixedDeltaTime);
+      self.chaserVelocity += Physics.gravity * Time.fixedDeltaTime;
+      self.chaserVelocity = new Vector3(vector3.x, self.chaserVelocity.y, vector3.z);
+      self.chaserPosition += self.chaserVelocity * Time.fixedDeltaTime;
+      self.chasePositionVisualizer.position = self.chaserPosition;
+      self.chaserIsUnderground = -(double)num2 < (double)self.wormBodyPositions.undergroundTestYOffset;
+      self.keyFrameGenerationTimer -= Time.deltaTime;
+      if ((double)self.keyFrameGenerationTimer > 0.0)
+        return;
+      self.keyFrameGenerationTimer = self.keyFrameGenerationInterval;
+      self.wormBodyPositions.AttemptToGenerateKeyFrame(self.wormBodyPositions.GetSynchronizedTimeStamp() + self.wormBodyPositions.followDelay, self.chaserPosition, self.chaserVelocity);
     }
 
     private void ReplaceSeekingBombPrefab(On.EntityStates.LunarWisp.SeekingBomb.orig_OnEnter orig, EntityStates.LunarWisp.SeekingBomb self)
@@ -516,6 +613,25 @@ namespace EnemiesPlus
         {
           List<AISkillDriver> list = new();
           list.Add(arr[arr.Length - 1]);
+          for (int i = 0; i < arr.Length - 1; i++)
+          {
+            if (i == arr.Length - 1)
+              continue;
+            list.Add(arr[i]);
+          }
+          arr = list.ToArray();
+        }
+        self.gameObject.GetComponent<BaseAI>().skillDrivers = arr;
+      }
+      if (body.name == "MagmaWormBody(Clone)")
+      {
+        int desiredPosition = 0;
+        AISkillDriver[] arr = self.gameObject.GetComponent<BaseAI>().skillDrivers;
+
+        if (desiredPosition >= 0 && desiredPosition < arr.Length)
+        {
+          List<AISkillDriver> list = new();
+          list.Add(arr[1]);
           for (int i = 0; i < arr.Length - 1; i++)
           {
             if (i == arr.Length - 1)

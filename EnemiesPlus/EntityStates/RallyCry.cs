@@ -38,7 +38,7 @@ namespace EnemiesPlus
             this.modelAnimator = this.GetModelAnimator();
             if (!(bool)this.modelAnimator)
                 return;
-            Util.PlayAttackSpeedSound("Play_beetle_queen_attack1", this.gameObject, 6);
+            Util.PlayAttackSpeedSound("Play_beetle_guard_death", this.gameObject, 0.5f);
             this.PlayCrossfade("Body", nameof(DefenseUp), "DefenseUp.playbackRate", this.duration, 0.2f);
         }
 
