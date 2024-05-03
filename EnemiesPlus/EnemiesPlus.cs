@@ -1,4 +1,5 @@
 using BepInEx;
+using BepInEx.Configuration;
 using EntityStates;
 using R2API;
 using RoR2;
@@ -14,7 +15,7 @@ using HG;
 
 namespace EnemiesPlus
 {
-  [BepInPlugin("com.Nuxlar.EnemiesPlus", "EnemiesPlus", "1.0.3")]
+  [BepInPlugin("com.Nuxlar.EnemiesPlus", "EnemiesPlus", "1.0.4")]
 
   public class EnemiesPlus : BaseUnityPlugin
   {
@@ -58,29 +59,63 @@ namespace EnemiesPlus
     private DamageAPI.ModdedDamageType helfireDT;
     private DotController.DotIndex helfireDotIdx;
 
+    public static ConfigEntry<bool> enableBeetleChanges;
+    public static ConfigEntry<bool> enableBeetleFamilyChanges;
+    public static ConfigEntry<bool> enableBeetleGuardChanges;
+    public static ConfigEntry<bool> enableBeetleQueenChanges;
+
+    public static ConfigEntry<bool> enableLemurianChanges;
+    public static ConfigEntry<bool> enableWispChanges;
+    public static ConfigEntry<bool> enableGreaterWispChanges;
+    public static ConfigEntry<bool> enableBellChanges;
+    public static ConfigEntry<bool> enableImpChanges;
+    public static ConfigEntry<bool> enableWormChanges;
+    public static ConfigEntry<bool> enableLunarGolemChanges;
+    public static ConfigEntry<bool> enableLunarWispChanges;
+    private static ConfigFile EPConfig { get; set; }
+
     public void Awake()
     {
-      beetleJuice.canStack = true;
+      EPConfig = new ConfigFile(Paths.ConfigPath + "\\com.Nuxlar.EnemiesPlus.cfg", true);
+      enableBeetleFamilyChanges = EPConfig.Bind<bool>("General", "Enable Beetle Family Changes", true, "Makes BeetleJuice stackable");
+      enableBeetleChanges = EPConfig.Bind<bool>("General", "Enable Beetle Changes", true, "Adds projectile attack to beetles");
+      enableBeetleGuardChanges = EPConfig.Bind<bool>("General", "Enable Beetle Guard Changes", true, "Adds rally cry to beetle guards");
+      enableBeetleQueenChanges = EPConfig.Bind<bool>("General", "Enable Beetle Queen Changes", true, "Adds BeetleJuice to Beetle Queen attacks and spit explodes mid air");
+      enableLemurianChanges = EPConfig.Bind<bool>("General", "Enable Lemurian Changes", true, "Adds slight leap to Lemurian bite");
+      enableWispChanges = EPConfig.Bind<bool>("General", "Enable Wisp Changes", true, "Increases Wisp bullet count");
+      enableGreaterWispChanges = EPConfig.Bind<bool>("General", "Enable Greater Wisp Changes", true, "Decreases Greater Wisp credit cost");
+      enableBellChanges = EPConfig.Bind<bool>("General", "Enable Brass Contraption Changes", true, "Adds a new ability, BuffBeam to Brass Contraptions");
+      enableImpChanges = EPConfig.Bind<bool>("General", "Enable Imp Changes", true, "Changes Imp's primary attack to be ranged");
+      enableWormChanges = EPConfig.Bind<bool>("General", "Enable Worm Changes", true, "Changes Worms to have better targeting and adds a leap attack");
+      enableLunarGolemChanges = EPConfig.Bind<bool>("General", "Enable Lunar Golem Changes", true, "Adds a new ability, Lunar Shell to Lunar Golems");
+      enableLunarWispChanges = EPConfig.Bind<bool>("General", "Enable Lunar Wisp Changes", true, "Increases Lunar Wisp movement speed and acceleration, orb applies helfire");
+
+      if (enableBeetleFamilyChanges.Value)
+        beetleJuice.canStack = true;
       beetleJuiceDT = DamageAPI.ReserveDamageType();
 
       DamageAPI.ModdedDamageTypeHolderComponent mdc = beetleSpit.AddComponent<DamageAPI.ModdedDamageTypeHolderComponent>();
-      mdc.Add(beetleJuiceDT);
-      DamageAPI.ModdedDamageTypeHolderComponent mdc2 = beetleQueenSpit.AddComponent<DamageAPI.ModdedDamageTypeHolderComponent>();
-      mdc2.Add(beetleJuiceDT);
-      DamageAPI.ModdedDamageTypeHolderComponent mdc3 = beetleQueenAcid.AddComponent<DamageAPI.ModdedDamageTypeHolderComponent>();
-      mdc3.Add(beetleJuiceDT);
+      if (enableBeetleQueenChanges.Value)
+      {
+        beetleQueenSpit.GetComponent<ProjectileImpactExplosion>().destroyOnEnemy = true;
+
+        mdc.Add(beetleJuiceDT);
+        DamageAPI.ModdedDamageTypeHolderComponent mdc2 = beetleQueenSpit.AddComponent<DamageAPI.ModdedDamageTypeHolderComponent>();
+        mdc2.Add(beetleJuiceDT);
+        DamageAPI.ModdedDamageTypeHolderComponent mdc3 = beetleQueenAcid.AddComponent<DamageAPI.ModdedDamageTypeHolderComponent>();
+        mdc3.Add(beetleJuiceDT);
+      }
 
       helfireDT = DamageAPI.ReserveDamageType();
       DamageAPI.ModdedDamageTypeHolderComponent mdc4 = lunarWispTrackingBomb.AddComponent<DamageAPI.ModdedDamageTypeHolderComponent>();
       mdc4.Add(helfireDT);
 
-      greaterWispCard.directorCreditCost = 120;
+      if (enableGreaterWispChanges.Value)
+        greaterWispCard.directorCreditCost = 120;
 
       ContentAddition.AddEntityState<BeetleSpit>(out _);
       ContentAddition.AddEntityState<SpikeSlash>(out _);
       ContentAddition.AddEntityState<RallyCry>(out _);
-
-      beetleQueenSpit.GetComponent<ProjectileImpactExplosion>().destroyOnEnemy = true;
 
       beetleSpit.transform.localScale /= 2;
       beetleSpit.GetComponent<Rigidbody>().useGravity = false;
@@ -106,165 +141,188 @@ namespace EnemiesPlus
 
       ContentAddition.AddEffect(beetleSpitExplosion);
 
+      if (enableBeetleChanges.Value)
+      {
+        SkillLocator skillLocator = beetleBody.GetComponent<SkillLocator>();
+        skillLocator.primary.skillFamily.variants[0].skillDef.activationState = new SerializableEntityStateType(typeof(BeetleSpit));
+        skillLocator.primary.skillFamily.variants[0].skillDef.baseRechargeInterval = 3f;
+        skillLocator.secondary.skillFamily.variants[0].skillDef.baseMaxStock = 0;
+
+        foreach (AISkillDriver driver in beetleMaster.GetComponents<AISkillDriver>())
+        {
+          switch (driver.customName)
+          {
+            case "HeadbuttOffNodegraph":
+              driver.minDistance = 5f;
+              driver.maxDistance = 20f;
+              break;
+            case "ChaseOffNodegraph":
+              driver.maxDistance = 5f;
+              driver.movementType = AISkillDriver.MovementType.FleeMoveTarget;
+              break;
+            case "FollowNodeGraphToTarget":
+              driver.minDistance = 15f;
+              break;
+          }
+        }
+      }
+
       SetupBGBuff();
       frenzyAura.GetComponent<DestroyOnTimer>().duration = 8f;
       frenzyAura.transform.GetChild(0).GetComponent<ParticleSystemRenderer>().sharedMaterial = frenzyMat;
       ContentAddition.AddEntityState<RallyCry>(out _);
-      AISkillDriver rallyCryDriver = beetleGuardMaster.AddComponent<AISkillDriver>();
-      rallyCryDriver.customName = "RallyCry";
-      rallyCryDriver.skillSlot = SkillSlot.Utility;
-      rallyCryDriver.requireSkillReady = true;
-      // rallyCryDriver.maxUserHealthFraction = 0.8f;
-      rallyCryDriver.movementType = AISkillDriver.MovementType.Stop;
-      beetleGuard.GetComponent<SkillLocator>().utility.skillFamily.variants[0].skillDef.activationState = new SerializableEntityStateType(typeof(RallyCry));
+
+      if (enableBeetleGuardChanges.Value)
+      {
+        AISkillDriver rallyCryDriver = beetleGuardMaster.AddComponent<AISkillDriver>();
+        rallyCryDriver.customName = "RallyCry";
+        rallyCryDriver.skillSlot = SkillSlot.Utility;
+        rallyCryDriver.requireSkillReady = true;
+        // rallyCryDriver.maxUserHealthFraction = 0.8f;
+        rallyCryDriver.movementType = AISkillDriver.MovementType.Stop;
+        beetleGuard.GetComponent<SkillLocator>().utility.skillFamily.variants[0].skillDef.activationState = new SerializableEntityStateType(typeof(RallyCry));
+
+      }
 
       SetupHelfireBuff();
 
-      BuffBeamSetup();
+      if (enableBellChanges.Value)
+        BuffBeamSetup();
 
-      SkillDef impSlash = impBody.GetComponent<SkillLocator>().primary.skillFamily.variants[0].skillDef;
-      impSlash.activationState = new SerializableEntityStateType(typeof(SpikeSlash));
-      impSlash.baseRechargeInterval = 5f;
+      if (enableImpChanges.Value)
+      {
+        SkillDef impSlash = impBody.GetComponent<SkillLocator>().primary.skillFamily.variants[0].skillDef;
+        impSlash.activationState = new SerializableEntityStateType(typeof(SpikeSlash));
+        impSlash.baseRechargeInterval = 5f;
 
-      lemBody.GetComponent<SkillLocator>().secondary.skillFamily.variants[0].skillDef.baseRechargeInterval = 1f;
+        foreach (AISkillDriver driver in impMaster.GetComponents<AISkillDriver>())
+        {
+          switch (driver.customName)
+          {
+            case "Slash":
+              driver.minDistance = 15f;
+              driver.maxDistance = 45f;
+              break;
+            case "LeaveNodegraph":
+              driver.minDistance = 0f;
+              driver.maxDistance = 15f;
+              driver.shouldSprint = true;
+              driver.movementType = AISkillDriver.MovementType.FleeMoveTarget;
+              break;
+            case "StrafeBecausePrimaryIsntReady":
+              driver.minDistance = 15f;
+              break;
+            case "BlinkBecauseClose":
+              driver.minDistance = 25f;
+              driver.maxDistance = 45f;
+              break;
+            case "PathToTarget":
+              driver.minDistance = 15f;
+              break;
+          }
+        }
+      }
+
+      if (enableLemurianChanges.Value)
+        lemBody.GetComponent<SkillLocator>().secondary.skillFamily.variants[0].skillDef.baseRechargeInterval = 1f;
 
       ProjectileImpactExplosion pie2 = voidSpike.GetComponent<ProjectileImpactExplosion>();
       pie2.destroyOnWorld = true;
       // lem hitbox orig 4.0121 11.522 7.3294
-      SkillLocator skillLocator = beetleBody.GetComponent<SkillLocator>();
-      skillLocator.primary.skillFamily.variants[0].skillDef.activationState = new SerializableEntityStateType(typeof(BeetleSpit));
-      skillLocator.primary.skillFamily.variants[0].skillDef.baseRechargeInterval = 3f;
-      skillLocator.secondary.skillFamily.variants[0].skillDef.baseMaxStock = 0;
 
-      ParticleSystem[] magmaWormPS = magmaWorm.GetComponent<ModelLocator>().modelTransform.gameObject.GetComponentsInChildren<ParticleSystem>();
-      foreach (ParticleSystem ps in magmaWormPS)
-        ps.startSize *= 2;
-
-      SkillDef magmaWormUtilityDef = magmaWorm.GetComponent<SkillLocator>().utility.skillFamily.variants[0].skillDef;
-      magmaWormUtilityDef.activationState = new SerializableEntityStateType(typeof(EntityStates.MagmaWorm.Leap));
-      magmaWormUtilityDef.baseRechargeInterval = 60f;
-      magmaWormUtilityDef.activationStateMachineName = "Weapon";
-
-      foreach (AISkillDriver driver in magmaWormMaster.GetComponents<AISkillDriver>())
+      if (enableWormChanges.Value)
       {
-        switch (driver.customName)
+        ParticleSystem[] magmaWormPS = magmaWorm.GetComponent<ModelLocator>().modelTransform.gameObject.GetComponentsInChildren<ParticleSystem>();
+        foreach (ParticleSystem ps in magmaWormPS)
+          ps.startSize *= 2;
+
+        SkillDef magmaWormUtilityDef = magmaWorm.GetComponent<SkillLocator>().utility.skillFamily.variants[0].skillDef;
+        magmaWormUtilityDef.activationState = new SerializableEntityStateType(typeof(EntityStates.MagmaWorm.Leap));
+        magmaWormUtilityDef.baseRechargeInterval = 60f;
+        magmaWormUtilityDef.activationStateMachineName = "Weapon";
+
+        foreach (AISkillDriver driver in magmaWormMaster.GetComponents<AISkillDriver>())
         {
-          case "Blink":
-            driver.shouldSprint = true;
-            driver.minDistance = 0f;
-            driver.aimType = AISkillDriver.AimType.AtMoveTarget;
-            break;
-          default:
-            driver.skillSlot = SkillSlot.None;
-            break;
+          switch (driver.customName)
+          {
+            case "Blink":
+              driver.shouldSprint = true;
+              driver.minDistance = 0f;
+              driver.aimType = AISkillDriver.AimType.AtMoveTarget;
+              break;
+            default:
+              driver.skillSlot = SkillSlot.None;
+              break;
+          }
+        }
+
+        ParticleSystem[] electricWormPS = electricWorm.GetComponent<ModelLocator>().modelTransform.gameObject.GetComponentsInChildren<ParticleSystem>();
+        foreach (ParticleSystem ps in electricWormPS)
+          ps.startSize *= 2;
+
+        SkillDef electicWormUtilityDef = electricWorm.GetComponent<SkillLocator>().utility.skillFamily.variants[0].skillDef;
+        electicWormUtilityDef.activationState = new SerializableEntityStateType(typeof(EntityStates.MagmaWorm.Leap));
+        electicWormUtilityDef.baseRechargeInterval = 60f;
+        electicWormUtilityDef.activationStateMachineName = "Weapon";
+
+        foreach (AISkillDriver driver in electricWormMaster.GetComponents<AISkillDriver>())
+        {
+          switch (driver.customName)
+          {
+            case "Blink":
+              driver.shouldSprint = true;
+              driver.minDistance = 0f;
+              driver.aimType = AISkillDriver.AimType.AtMoveTarget;
+              break;
+            default:
+              driver.skillSlot = SkillSlot.None;
+              break;
+          }
         }
       }
 
-      ParticleSystem[] electricWormPS = electricWorm.GetComponent<ModelLocator>().modelTransform.gameObject.GetComponentsInChildren<ParticleSystem>();
-      foreach (ParticleSystem ps in electricWormPS)
-        ps.startSize *= 2;
-
-      SkillDef electicWormUtilityDef = electricWorm.GetComponent<SkillLocator>().utility.skillFamily.variants[0].skillDef;
-      electicWormUtilityDef.activationState = new SerializableEntityStateType(typeof(EntityStates.MagmaWorm.Leap));
-      electicWormUtilityDef.baseRechargeInterval = 60f;
-      electicWormUtilityDef.activationStateMachineName = "Weapon";
-
-      foreach (AISkillDriver driver in electricWormMaster.GetComponents<AISkillDriver>())
+      if (enableLunarWispChanges.Value)
       {
-        switch (driver.customName)
+        CharacterBody lunarWispBody = lunarWisp.GetComponent<CharacterBody>();
+        lunarWispBody.baseMoveSpeed = 20f;
+        lunarWispBody.baseAcceleration = 20f;
+
+        foreach (AISkillDriver driver in lunarWispMaster.GetComponents<AISkillDriver>())
         {
-          case "Blink":
-            driver.shouldSprint = true;
-            driver.minDistance = 0f;
-            driver.aimType = AISkillDriver.AimType.AtMoveTarget;
-            break;
-          default:
-            driver.skillSlot = SkillSlot.None;
-            break;
+          switch (driver.customName)
+          {
+            case "Back Up":
+              driver.maxDistance = 15f;
+              break;
+            case "Minigun":
+              driver.minDistance = 15f;
+              driver.maxDistance = 75f;
+              break;
+            case "Chase":
+              driver.minDistance = 30f;
+              driver.shouldSprint = true;
+              break;
+          }
         }
       }
 
-      foreach (AISkillDriver driver in beetleMaster.GetComponents<AISkillDriver>())
+      if (enableLunarGolemChanges.Value)
       {
-        switch (driver.customName)
-        {
-          case "HeadbuttOffNodegraph":
-            driver.minDistance = 5f;
-            driver.maxDistance = 20f;
-            break;
-          case "ChaseOffNodegraph":
-            driver.maxDistance = 5f;
-            driver.movementType = AISkillDriver.MovementType.FleeMoveTarget;
-            break;
-          case "FollowNodeGraphToTarget":
-            driver.minDistance = 15f;
-            break;
-        }
+        lunarGolem.GetComponent<SetStateOnHurt>().canBeHitStunned = false;
+
+        lunarGolem.GetComponent<SkillLocator>().secondary.skillFamily.variants[0].skillDef.interruptPriority = InterruptPriority.Death;
+        lunarGolemMaster.GetComponents<AISkillDriver>().Where(driver => driver.customName == "StrafeAndShoot").First().requireSkillReady = true;
+
+        AISkillDriver lunarShellDriver = lunarGolemMaster.AddComponent<AISkillDriver>();
+        lunarShellDriver.customName = "LunarShell";
+        lunarShellDriver.skillSlot = SkillSlot.Secondary;
+        lunarShellDriver.requireSkillReady = true;
+        lunarShellDriver.requireEquipmentReady = false;
+        lunarShellDriver.driverUpdateTimerOverride = 3f;
+        // lunarShellDriver.maxUserHealthFraction = 0.75f;
+        lunarShellDriver.moveTargetType = AISkillDriver.TargetType.CurrentEnemy;
+        lunarShellDriver.movementType = AISkillDriver.MovementType.ChaseMoveTarget;
       }
-
-      foreach (AISkillDriver driver in impMaster.GetComponents<AISkillDriver>())
-      {
-        switch (driver.customName)
-        {
-          case "Slash":
-            driver.minDistance = 15f;
-            driver.maxDistance = 45f;
-            break;
-          case "LeaveNodegraph":
-            driver.minDistance = 0f;
-            driver.maxDistance = 15f;
-            driver.shouldSprint = true;
-            driver.movementType = AISkillDriver.MovementType.FleeMoveTarget;
-            break;
-          case "StrafeBecausePrimaryIsntReady":
-            driver.minDistance = 15f;
-            break;
-          case "BlinkBecauseClose":
-            driver.minDistance = 25f;
-            driver.maxDistance = 45f;
-            break;
-          case "PathToTarget":
-            driver.minDistance = 15f;
-            break;
-        }
-      }
-
-      foreach (AISkillDriver driver in lunarWispMaster.GetComponents<AISkillDriver>())
-      {
-        switch (driver.customName)
-        {
-          case "Back Up":
-            driver.maxDistance = 15f;
-            break;
-          case "Minigun":
-            driver.minDistance = 15f;
-            driver.maxDistance = 75f;
-            break;
-          case "Chase":
-            driver.minDistance = 30f;
-            driver.shouldSprint = true;
-            break;
-        }
-      }
-
-      CharacterBody lunarWispBody = lunarWisp.GetComponent<CharacterBody>();
-      lunarWispBody.baseMoveSpeed = 20f;
-      lunarWispBody.baseAcceleration = 20f;
-
-      lunarGolem.GetComponent<SetStateOnHurt>().canBeHitStunned = false;
-
-      lunarGolem.GetComponent<SkillLocator>().secondary.skillFamily.variants[0].skillDef.interruptPriority = InterruptPriority.Death;
-      lunarGolemMaster.GetComponents<AISkillDriver>().Where(driver => driver.customName == "StrafeAndShoot").First().requireSkillReady = true;
-
-      AISkillDriver lunarShellDriver = lunarGolemMaster.AddComponent<AISkillDriver>();
-      lunarShellDriver.customName = "LunarShell";
-      lunarShellDriver.skillSlot = SkillSlot.Secondary;
-      lunarShellDriver.requireSkillReady = true;
-      lunarShellDriver.requireEquipmentReady = false;
-      lunarShellDriver.driverUpdateTimerOverride = 3f;
-      // lunarShellDriver.maxUserHealthFraction = 0.75f;
-      lunarShellDriver.moveTargetType = AISkillDriver.TargetType.CurrentEnemy;
-      lunarShellDriver.movementType = AISkillDriver.MovementType.ChaseMoveTarget;
 
       // On.EntityStates.AI.BaseAIState.AimAt += PredictiveAiming;
       On.RoR2.CharacterMaster.OnBodyStart += RearrangeSkillDrivers;
@@ -273,7 +331,6 @@ namespace EnemiesPlus
 
       On.EntityStates.LemurianMonster.Bite.OnEnter += BiteLeap;
       On.EntityStates.Wisp1Monster.FireEmbers.OnEnter += IncreaseWispEmbers;
-      On.EntityStates.GolemMonster.ChargeLaser.Update += TweakGolemLaserAim;
       On.EntityStates.Bell.BellWeapon.BuffBeam.OnEnter += PreventBellBellBuff;
       On.EntityStates.Bell.BellWeapon.BuffBeam.OnExit += RemoveInvincibility;
       On.EntityStates.Bell.BellWeapon.BuffBeam.GetMinimumInterruptPriority += BellPriority;
@@ -294,50 +351,56 @@ namespace EnemiesPlus
 
     private void RemoveRandomTurns(On.RoR2.WormBodyPositionsDriver.orig_FixedUpdateServer orig, RoR2.WormBodyPositionsDriver self)
     {
-      CharacterBody body = self.gameObject.GetComponent<CharacterBody>();
-      Vector3 targetPosition = self.referenceTransform.position;
-
-      if (body && body.master)
+      if (!enableWormChanges.Value)
+        orig(self);
+      else
       {
-        if (self.gameObject.GetComponents<EntityStateMachine>().Where(machine => machine.customName == "Weapon").First().state.GetType() != typeof(EntityStates.MagmaWorm.Leap))
+        CharacterBody body = self.gameObject.GetComponent<CharacterBody>();
+        Vector3 targetPosition = self.referenceTransform.position;
+
+        if (body && body.master)
         {
-          BaseAI baseAI = body.masterObject.GetComponent<BaseAI>();
-          if (baseAI && baseAI.currentEnemy != null && baseAI.currentEnemy.characterBody != null)
-            targetPosition = baseAI.currentEnemy.characterBody.corePosition;
+          if (self.gameObject.GetComponents<EntityStateMachine>().Where(machine => machine.customName == "Weapon").First().state.GetType() != typeof(EntityStates.MagmaWorm.Leap))
+          {
+            BaseAI baseAI = body.masterObject.GetComponent<BaseAI>();
+            if (baseAI && baseAI.currentEnemy != null && baseAI.currentEnemy.characterBody != null)
+              targetPosition = baseAI.currentEnemy.characterBody.corePosition;
+          }
         }
-      }
 
-      float speedMultiplier = self.wormBodyPositions.speedMultiplier;
-      Vector3 normalized = (targetPosition - self.chaserPosition).normalized;
-      float num1 = (float)((self.chaserIsUnderground ? (double)self.maxTurnSpeed : (double)self.maxTurnSpeed * (double)self.turnRateCoefficientAboveGround) * (Math.PI / 180.0));
-      Vector3 vector3 = Vector3.RotateTowards(new Vector3(self.chaserVelocity.x, 0.0f, self.chaserVelocity.z), new Vector3(normalized.x, 0.0f, normalized.z) * speedMultiplier, num1 * Time.fixedDeltaTime, float.PositiveInfinity);
-      vector3 = vector3.normalized * speedMultiplier;
-      float num2 = targetPosition.y - self.chaserPosition.y;
-      float num3 = -self.chaserVelocity.y * self.yDamperConstant;
-      float num4 = num2 * self.ySpringConstant;
-      if (self.allowShoving && (double)Mathf.Abs(self.chaserVelocity.y) < (double)self.yShoveVelocityThreshold && (double)num2 > (double)self.yShovePositionThreshold)
-        self.chaserVelocity = self.chaserVelocity.XAZ(self.chaserVelocity.y + self.yShoveForce * Time.fixedDeltaTime);
-      if (!self.chaserIsUnderground)
-      {
-        num4 *= self.wormForceCoefficientAboveGround;
-        num3 *= self.wormForceCoefficientAboveGround;
+        float speedMultiplier = self.wormBodyPositions.speedMultiplier;
+        Vector3 normalized = (targetPosition - self.chaserPosition).normalized;
+        float num1 = (float)((self.chaserIsUnderground ? (double)self.maxTurnSpeed : (double)self.maxTurnSpeed * (double)self.turnRateCoefficientAboveGround) * (Math.PI / 180.0));
+        Vector3 vector3 = Vector3.RotateTowards(new Vector3(self.chaserVelocity.x, 0.0f, self.chaserVelocity.z), new Vector3(normalized.x, 0.0f, normalized.z) * speedMultiplier, num1 * Time.fixedDeltaTime, float.PositiveInfinity);
+        vector3 = vector3.normalized * speedMultiplier;
+        float num2 = targetPosition.y - self.chaserPosition.y;
+        float num3 = -self.chaserVelocity.y * self.yDamperConstant;
+        float num4 = num2 * self.ySpringConstant;
+        if (self.allowShoving && (double)Mathf.Abs(self.chaserVelocity.y) < (double)self.yShoveVelocityThreshold && (double)num2 > (double)self.yShovePositionThreshold)
+          self.chaserVelocity = self.chaserVelocity.XAZ(self.chaserVelocity.y + self.yShoveForce * Time.fixedDeltaTime);
+        if (!self.chaserIsUnderground)
+        {
+          num4 *= self.wormForceCoefficientAboveGround;
+          num3 *= self.wormForceCoefficientAboveGround;
+        }
+        self.chaserVelocity = self.chaserVelocity.XAZ(self.chaserVelocity.y + (num4 + num3) * Time.fixedDeltaTime);
+        self.chaserVelocity += Physics.gravity * Time.fixedDeltaTime;
+        self.chaserVelocity = new Vector3(vector3.x, self.chaserVelocity.y, vector3.z);
+        self.chaserPosition += self.chaserVelocity * Time.fixedDeltaTime;
+        self.chasePositionVisualizer.position = self.chaserPosition;
+        self.chaserIsUnderground = -(double)num2 < (double)self.wormBodyPositions.undergroundTestYOffset;
+        self.keyFrameGenerationTimer -= Time.deltaTime;
+        if ((double)self.keyFrameGenerationTimer > 0.0)
+          return;
+        self.keyFrameGenerationTimer = self.keyFrameGenerationInterval;
+        self.wormBodyPositions.AttemptToGenerateKeyFrame(self.wormBodyPositions.GetSynchronizedTimeStamp() + self.wormBodyPositions.followDelay, self.chaserPosition, self.chaserVelocity);
       }
-      self.chaserVelocity = self.chaserVelocity.XAZ(self.chaserVelocity.y + (num4 + num3) * Time.fixedDeltaTime);
-      self.chaserVelocity += Physics.gravity * Time.fixedDeltaTime;
-      self.chaserVelocity = new Vector3(vector3.x, self.chaserVelocity.y, vector3.z);
-      self.chaserPosition += self.chaserVelocity * Time.fixedDeltaTime;
-      self.chasePositionVisualizer.position = self.chaserPosition;
-      self.chaserIsUnderground = -(double)num2 < (double)self.wormBodyPositions.undergroundTestYOffset;
-      self.keyFrameGenerationTimer -= Time.deltaTime;
-      if ((double)self.keyFrameGenerationTimer > 0.0)
-        return;
-      self.keyFrameGenerationTimer = self.keyFrameGenerationInterval;
-      self.wormBodyPositions.AttemptToGenerateKeyFrame(self.wormBodyPositions.GetSynchronizedTimeStamp() + self.wormBodyPositions.followDelay, self.chaserPosition, self.chaserVelocity);
     }
 
     private void ReplaceSeekingBombPrefab(On.EntityStates.LunarWisp.SeekingBomb.orig_OnEnter orig, EntityStates.LunarWisp.SeekingBomb self)
     {
-      EntityStates.LunarWisp.SeekingBomb.projectilePrefab = lunarWispTrackingBomb;
+      if (enableLunarWispChanges.Value)
+        EntityStates.LunarWisp.SeekingBomb.projectilePrefab = lunarWispTrackingBomb;
       orig(self);
     }
 
@@ -427,50 +490,13 @@ namespace EnemiesPlus
       buffBeamDriver.moveTargetType = AISkillDriver.TargetType.CurrentEnemy;
     }
 
-    private void TweakGolemLaserAim(On.EntityStates.GolemMonster.ChargeLaser.orig_Update orig, EntityStates.GolemMonster.ChargeLaser self)
-    {
-      IntPtr ptr = typeof(BaseState).GetMethod(nameof(BaseState.Update)).MethodHandle.GetFunctionPointer();
-      Action baseUpdate = (Action)Activator.CreateInstance(typeof(Action), self, ptr);
-      baseUpdate();
-
-      if (!(bool)self.laserEffect || !(bool)self.laserLineComponent)
-        return;
-      float distance = 1000f;
-      Ray aimRay = self.GetAimRay();
-      Vector3 position = self.laserEffect.transform.parent.position;
-      Vector3 point = aimRay.GetPoint(distance);
-      self.laserDirection = point - position;
-      Ray ray = aimRay;
-      RaycastHit raycastHit;
-      double maxDistance = (double)distance;
-      if (Physics.Raycast(ray, out raycastHit, (float)maxDistance, LayerIndex.CommonMasks.bullet))
-        point = raycastHit.point;
-      self.laserLineComponent.SetPosition(0, position);
-      self.laserLineComponent.SetPosition(1, point);
-      float num1;
-      if ((double)self.duration - (double)self.age > 0.5)
-      {
-        num1 = self.age / self.duration;
-      }
-      else
-      {
-        self.flashTimer -= Time.deltaTime;
-        if ((double)self.flashTimer <= 0.0)
-        {
-          self.laserOn = !self.laserOn;
-          self.flashTimer = 0.0333333351f;
-        }
-        num1 = self.laserOn ? 1f : 0.0f;
-      }
-      float num2 = num1 * EntityStates.GolemMonster.ChargeLaser.laserMaxWidth;
-      self.laserLineComponent.startWidth = num2;
-      self.laserLineComponent.endWidth = num2;
-    }
-
     private void IncreaseWispEmbers(On.EntityStates.Wisp1Monster.FireEmbers.orig_OnEnter orig, EntityStates.Wisp1Monster.FireEmbers self)
     {
-      EntityStates.Wisp1Monster.FireEmbers.damageCoefficient = 0.75f; // 1.5
-      EntityStates.Wisp1Monster.FireEmbers.bulletCount = 6; // 3
+      if (enableWispChanges.Value)
+      {
+        EntityStates.Wisp1Monster.FireEmbers.damageCoefficient = 0.75f; // 1.5
+        EntityStates.Wisp1Monster.FireEmbers.bulletCount = 6; // 3
+      }
       orig(self);
     }
 
@@ -578,7 +604,7 @@ namespace EnemiesPlus
     private void RearrangeSkillDrivers(On.RoR2.CharacterMaster.orig_OnBodyStart orig, CharacterMaster self, CharacterBody body)
     {
       orig(self, body);
-      if (body.name == "BeetleGuardBody(Clone)")
+      if (body.name == "BeetleGuardBody(Clone)" && enableBeetleGuardChanges.Value)
       {
         int desiredPosition = 2;
         AISkillDriver[] arr = self.gameObject.GetComponent<BaseAI>().skillDrivers;
@@ -591,7 +617,7 @@ namespace EnemiesPlus
         }
         self.gameObject.GetComponent<BaseAI>().skillDrivers = arr;
       }
-      if (body.name == "BellBody(Clone)")
+      if (body.name == "BellBody(Clone)" && enableBellChanges.Value)
       {
         int desiredPosition = 2;
         AISkillDriver[] arr = self.gameObject.GetComponent<BaseAI>().skillDrivers;
@@ -604,7 +630,7 @@ namespace EnemiesPlus
         }
         self.gameObject.GetComponent<BaseAI>().skillDrivers = arr;
       }
-      if (body.name == "LunarGolemBody(Clone)")
+      if (body.name == "LunarGolemBody(Clone)" && enableLunarGolemChanges.Value)
       {
         int desiredPosition = 0;
         AISkillDriver[] arr = self.gameObject.GetComponent<BaseAI>().skillDrivers;
@@ -705,16 +731,19 @@ namespace EnemiesPlus
     private void BiteLeap(On.EntityStates.LemurianMonster.Bite.orig_OnEnter orig, EntityStates.LemurianMonster.Bite self)
     {
       orig(self);
-      Vector3 leapDirection = self.GetAimRay().direction;
-      leapDirection.y = 0.0f;
-      float magnitude = leapDirection.magnitude;
-      if ((double)magnitude > 0.0)
-        leapDirection /= magnitude;
-      self.characterMotor.velocity = (leapDirection * self.characterBody.moveSpeed * 2f) with
+      if (enableLemurianChanges.Value)
       {
-        y = self.characterBody.jumpPower * 0.25f
-      };
-      self.characterMotor.Motor.ForceUnground();
+        Vector3 leapDirection = self.GetAimRay().direction;
+        leapDirection.y = 0.0f;
+        float magnitude = leapDirection.magnitude;
+        if ((double)magnitude > 0.0)
+          leapDirection /= magnitude;
+        self.characterMotor.velocity = (leapDirection * self.characterBody.moveSpeed * 2f) with
+        {
+          y = self.characterBody.jumpPower * 0.25f
+        };
+        self.characterMotor.Motor.ForceUnground();
+      }
     }
   }
 }

@@ -38,6 +38,10 @@
 
 ## Changelog
 
+**1.0.4**
+
+- Adds config for disabling each new enemy ability/behavior
+
 **1.0.3**
 
 - Changes beetle guard RallyCry sound
