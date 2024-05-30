@@ -38,6 +38,10 @@
 
 ## Changelog
 
+**1.0.5**
+
+- Fixes crash from the Devotion Update
+
 **1.0.4**
 
 - Adds config for disabling each new enemy ability/behavior

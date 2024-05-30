@@ -15,7 +15,7 @@ using HG;
 
 namespace EnemiesPlus
 {
-  [BepInPlugin("com.Nuxlar.EnemiesPlus", "EnemiesPlus", "1.0.4")]
+  [BepInPlugin("com.Nuxlar.EnemiesPlus", "EnemiesPlus", "1.0.5")]
 
   public class EnemiesPlus : BaseUnityPlugin
   {
@@ -116,6 +116,7 @@ namespace EnemiesPlus
       ContentAddition.AddEntityState<BeetleSpit>(out _);
       ContentAddition.AddEntityState<SpikeSlash>(out _);
       ContentAddition.AddEntityState<RallyCry>(out _);
+      ContentAddition.AddEntityState<BuffBeamPlus>(out _);
 
       beetleSpit.transform.localScale /= 2;
       beetleSpit.GetComponent<Rigidbody>().useGravity = false;
@@ -331,9 +332,6 @@ namespace EnemiesPlus
 
       On.EntityStates.LemurianMonster.Bite.OnEnter += BiteLeap;
       On.EntityStates.Wisp1Monster.FireEmbers.OnEnter += IncreaseWispEmbers;
-      On.EntityStates.Bell.BellWeapon.BuffBeam.OnEnter += PreventBellBellBuff;
-      On.EntityStates.Bell.BellWeapon.BuffBeam.OnExit += RemoveInvincibility;
-      On.EntityStates.Bell.BellWeapon.BuffBeam.GetMinimumInterruptPriority += BellPriority;
       On.EntityStates.LunarWisp.SeekingBomb.OnEnter += ReplaceSeekingBombPrefab;
       On.RoR2.WormBodyPositionsDriver.FixedUpdateServer += RemoveRandomTurns;
 
@@ -448,7 +446,7 @@ namespace EnemiesPlus
       buffBeam.skillDescriptionToken = "Creates a beam to a nearby ally and makes them invincible";
       // buffBeam.icon = ;
 
-      buffBeam.activationState = new SerializableEntityStateType(typeof(EntityStates.Bell.BellWeapon.BuffBeam));
+      buffBeam.activationState = new SerializableEntityStateType(typeof(BuffBeamPlus));
       buffBeam.activationStateMachineName = "Weapon";
       buffBeam.interruptPriority = InterruptPriority.Death;
 
@@ -498,79 +496,6 @@ namespace EnemiesPlus
         EntityStates.Wisp1Monster.FireEmbers.bulletCount = 6; // 3
       }
       orig(self);
-    }
-
-    private void PreventBellBellBuff(On.EntityStates.Bell.BellWeapon.BuffBeam.orig_OnEnter orig, EntityStates.Bell.BellWeapon.BuffBeam self)
-    {
-      IntPtr ptr = typeof(BaseState).GetMethod(nameof(BaseState.OnEnter)).MethodHandle.GetFunctionPointer();
-      Action baseOnEnter = (Action)Activator.CreateInstance(typeof(Action), self, ptr);
-      baseOnEnter();
-
-      Util.PlaySound(EntityStates.Bell.BellWeapon.BuffBeam.playBeamSoundString, self.gameObject);
-      Ray aimRay = self.GetAimRay();
-      BullseyeSearch bullseyeSearch = new BullseyeSearch();
-      bullseyeSearch.teamMaskFilter = TeamMask.none;
-      if ((bool)self.teamComponent)
-        bullseyeSearch.teamMaskFilter.AddTeam(self.teamComponent.teamIndex);
-      bullseyeSearch.filterByLoS = false;
-      bullseyeSearch.maxDistanceFilter = 50f;
-      bullseyeSearch.maxAngleFilter = 360f;
-      bullseyeSearch.searchOrigin = aimRay.origin;
-      bullseyeSearch.searchDirection = aimRay.direction;
-      bullseyeSearch.sortMode = BullseyeSearch.SortMode.Distance;
-      bullseyeSearch.RefreshCandidates();
-      bullseyeSearch.FilterOutGameObject(self.gameObject);
-      List<HurtBox> hurtBoxes = bullseyeSearch.GetResults().ToList();
-
-      if (hurtBoxes.Count > 0)
-      {
-        foreach (HurtBox hurtBox in hurtBoxes)
-        {
-          if (hurtBox.healthComponent && hurtBox.healthComponent.body && hurtBox.healthComponent.alive)
-          {
-            CharacterBody targetBody = hurtBox.healthComponent.body;
-            if (targetBody && targetBody.name != "BellBody(Clone)" && (targetBody.hullClassification == HullClassification.Golem || targetBody.hullClassification == HullClassification.BeetleQueen))
-            {
-              self.target = hurtBox;
-              self.targetBody = targetBody;
-              targetBody.AddBuff(RoR2Content.Buffs.Immune.buffIndex);
-              break;
-            }
-          }
-        }
-      }
-
-      if (!self.target && !self.targetBody)
-      {
-        self.outer.SetNextStateToMain();
-        return;
-      }
-
-      string childName = "Muzzle";
-      Transform modelTransform = self.GetModelTransform();
-      if (!(bool)modelTransform)
-        return;
-      ChildLocator component1 = modelTransform.GetComponent<ChildLocator>();
-      if (!(bool)component1)
-        return;
-      self.muzzleTransform = component1.FindChild(childName);
-      self.buffBeamInstance = GameObject.Instantiate<GameObject>(EntityStates.Bell.BellWeapon.BuffBeam.buffBeamPrefab);
-      ChildLocator component2 = self.buffBeamInstance.GetComponent<ChildLocator>();
-      if ((bool)component2)
-        self.beamTipTransform = component2.FindChild("BeamTip");
-      self.healBeamCurve = self.buffBeamInstance.GetComponentInChildren<BezierCurveLine>();
-    }
-
-    private void RemoveInvincibility(On.EntityStates.Bell.BellWeapon.BuffBeam.orig_OnExit orig, EntityStates.Bell.BellWeapon.BuffBeam self)
-    {
-      orig(self);
-      if ((bool)self.targetBody)
-        self.targetBody.RemoveBuff(RoR2Content.Buffs.Immune.buffIndex);
-    }
-
-    private InterruptPriority BellPriority(On.EntityStates.Bell.BellWeapon.BuffBeam.orig_GetMinimumInterruptPriority orig, EntityStates.Bell.BellWeapon.BuffBeam self)
-    {
-      return InterruptPriority.Death;
     }
 
     private void SetupBGBuff()
