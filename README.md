@@ -1,5 +1,7 @@
 # Enemies Plus
 
+# Score will be maintaining the mod from now on, check it out here https://thunderstore.io/package/score/EnemiesPlusPlus/
+
 ## Enemy Changes
 
 - Beetle Family - The debuff BeetleJuice is now stackable, lasting 5 seconds, and each stack applied resets the timer of previous stacks.
